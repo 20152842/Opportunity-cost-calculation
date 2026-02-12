@@ -34,8 +34,18 @@ header h1 {
 }
 
 .subtitle {
-    font-size: 1.1em;
-    opacity: 0.9;
+    font-size: 1.2em;
+    opacity: 0.95;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.description {
+    font-size: 0.95em;
+    opacity: 0.85;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.5;
 }
 
 main {

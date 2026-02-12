@@ -283,8 +283,28 @@ function displayResult(result) {
     document.getElementById('resultB-total').textContent = 
         result.optionB.totalCost.toLocaleString();
 
-    // 계산식
-    document.getElementById('formulaText').textContent = result.formula;
+    // 계산식 - 상세 버전 (각 선택지별로)
+    const hourlyWage = parseInt(hourlyWageInput.value.trim());
+    const perMinute = (hourlyWage / 60).toFixed(0);
+    const timeA = parseInt(optionATimeInput.value.trim());
+    const timeB = parseInt(optionBTimeInput.value.trim());
+    
+    const detailedFormula = `📊 계산 공식: 총 비용 = 직접 비용 + (시급 ÷ 60) × 소요 시간(분)
+분당 가치 = ${hourlyWage.toLocaleString()}원/시간 ÷ 60 = ${perMinute}원/분
+
+【선택지 A 상세 계산】
+・직접 비용: ${result.optionA.directCost.toLocaleString()}원
+・시간 비용: ${perMinute}원/분 × ${timeA}분 = ${result.optionA.timeCost.toLocaleString()}원
+・총 비용: ${result.optionA.directCost.toLocaleString()}원 + ${result.optionA.timeCost.toLocaleString()}원 = ${result.optionA.totalCost.toLocaleString()}원
+
+【선택지 B 상세 계산】
+・직접 비용: ${result.optionB.directCost.toLocaleString()}원
+・시간 비용: ${perMinute}원/분 × ${timeB}분 = ${result.optionB.timeCost.toLocaleString()}원
+・총 비용: ${result.optionB.directCost.toLocaleString()}원 + ${result.optionB.timeCost.toLocaleString()}원 = ${result.optionB.totalCost.toLocaleString()}원
+
+✅ 결론: ${recommendation === '동일' ? '두 선택지의 총 비용이 동일합니다' : `선택지 ${recommendation}이(가) ${result.costDifference.toLocaleString()}원 더 유리합니다`}`;
+
+    document.getElementById('formulaText').textContent = detailedFormula;
 
     // 결과 섹션 표시
     resultSection.classList.remove('hidden');
