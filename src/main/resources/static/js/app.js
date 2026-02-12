@@ -56,8 +56,8 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
     });
 });
 
-// 계산 버튼 클릭 이벤트
-calculateBtn.addEventListener('click', async () => {
+// 기본 계산(2개 선택지) 호출 함수
+async function calculateTwoOptions() {
     // 입력 검증
     if (!validateInputs()) {
         return;
@@ -103,13 +103,14 @@ calculateBtn.addEventListener('click', async () => {
 
         const result = await response.json();
         displayResult(result);
+        saveToHistory('2', requestData, result);
         hideError();
     } catch (error) {
         showError('네트워크 오류가 발생했습니다: ' + error.message);
     } finally {
         setLoadingState(false);
     }
-});
+}
 
 // 입력 검증
 function validateInputs() {
@@ -491,47 +492,12 @@ function displayMultiResult(result) {
     resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// 계산 버튼 클릭 이벤트 수정
-const originalCalculateClick = calculateBtn.onclick;
-calculateBtn.onclick = null;
+// 계산 버튼 클릭 이벤트 (모드에 따라 분기)
 calculateBtn.addEventListener('click', async () => {
     if (currentMode === 'multi') {
         await calculateMulti();
     } else {
-        // 기존 2개 선택지 계산 로직
-        if (!validateInputs()) return;
-        setLoadingState(true);
-        const requestData = {
-            hourlyWage: parseInt(hourlyWageInput.value.trim()),
-            optionA: {
-                timeMinutes: parseInt(optionATimeInput.value.trim()),
-                directCost: parseInt(optionACostInput.value.trim())
-            },
-            optionB: {
-                timeMinutes: parseInt(optionBTimeInput.value.trim()),
-                directCost: parseInt(optionBCostInput.value.trim())
-            }
-        };
-        try {
-            const response = await fetch('/api/calculate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestData)
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                showError(formatValidationErrors(errorData));
-                return;
-            }
-            const result = await response.json();
-            displayResult(result);
-            saveToHistory('2', requestData, result);
-            hideError();
-        } catch (error) {
-            showError('네트워크 오류가 발생했습니다: ' + error.message);
-        } finally {
-            setLoadingState(false);
-        }
+        await calculateTwoOptions();
     }
 });
 

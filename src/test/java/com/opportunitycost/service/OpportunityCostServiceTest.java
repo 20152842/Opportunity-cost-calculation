@@ -19,7 +19,9 @@ class OpportunityCostServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OpportunityCostService();
+        // 캐시 서비스는 인메모리 구현이므로 테스트에서 직접 생성하여 주입
+        CalculationCacheService cacheService = new CalculationCacheService();
+        service = new OpportunityCostService(cacheService);
     }
 
     @Test

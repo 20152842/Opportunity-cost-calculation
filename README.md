@@ -185,7 +185,7 @@ opportunity-cost-calculation/
 
 ## API 엔드포인트
 
-### POST /api/calculate
+### 1) POST `/api/calculate` — 2개 선택지 비교
 기회비용을 계산합니다.
 
 **Request Body:**
@@ -218,6 +218,52 @@ opportunity-cost-calculation/
   },
   "recommendation": "A",
   "costDifference": 6800,
+  "formula": "총 비용 = 직접 비용 + (시급 ÷ 60) × 소요 시간(분)..."
+}
+```
+
+### 2) POST `/api/calculate/multi` — 다안 비교 (3~5개 선택지)
+여러 선택지(3~5개)의 총비용을 한 번에 계산·비교합니다.
+
+**Request Body:**
+```json
+{
+  "hourlyWage": 15000,
+  "options": [
+    { "timeMinutes": 10, "directCost": 3000 },
+    { "timeMinutes": 40, "directCost": 2300 },
+    { "timeMinutes": 15, "directCost": 5000 }
+  ]
+}
+```
+
+**Response (예시):**
+```json
+{
+  "results": [
+    {
+      "optionNumber": 1,
+      "optionName": "선택지 A",
+      "breakdown": {
+        "directCost": 3000,
+        "timeCost": 2500,
+        "totalCost": 5500
+      }
+    },
+    {
+      "optionNumber": 2,
+      "optionName": "선택지 B",
+      "breakdown": {
+        "directCost": 2300,
+        "timeCost": 10000,
+        "totalCost": 12300
+      }
+    }
+  ],
+  "recommendedOption": 1,
+  "minTotalCost": 5500,
+  "maxTotalCost": 12300,
+  "maxDifference": 6800,
   "formula": "총 비용 = 직접 비용 + (시급 ÷ 60) × 소요 시간(분)..."
 }
 ```
