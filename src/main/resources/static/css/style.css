@@ -96,6 +96,35 @@ h2 {
     color: #666;
 }
 
+.helper-details {
+    margin-top: 8px;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.helper-details summary {
+    cursor: pointer;
+    padding: 6px 10px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    user-select: none;
+}
+
+.helper-details summary:hover {
+    background: #e8e8e8;
+}
+
+.helper-details ul {
+    margin: 10px 0 0 20px;
+    padding: 8px;
+    background: #fafafa;
+    border-left: 3px solid #667eea;
+}
+
+.helper-details li {
+    padding: 4px 0;
+}
+
 .comparison-container {
     display: grid;
     grid-template-columns: 1fr 1fr;

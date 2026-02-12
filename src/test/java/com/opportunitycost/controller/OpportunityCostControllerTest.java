@@ -114,4 +114,47 @@ class OpportunityCostControllerTest {
                 .content("{ invalid json }"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("음수 시간 입력 검증 테스트")
+    void testCalculate_NegativeTime() throws Exception {
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(15000L);
+        request.setOptionA(new ComparisonOption(-10, 3000L)); // 음수 시간
+        request.setOptionB(new ComparisonOption(40, 2300L));
+
+        mockMvc.perform(post("/api/calculate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("음수 비용 입력 검증 테스트")
+    void testCalculate_NegativeCost() throws Exception {
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(15000L);
+        request.setOptionA(new ComparisonOption(10, -1000L)); // 음수 비용
+        request.setOptionB(new ComparisonOption(40, 2300L));
+
+        mockMvc.perform(post("/api/calculate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("매우 큰 시급으로 계산 성공 테스트")
+    void testCalculate_VeryHighWage() throws Exception {
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(2_000_000L); // 200만원/시간
+        request.setOptionA(new ComparisonOption(10, 0L));
+        request.setOptionB(new ComparisonOption(5, 0L));
+
+        mockMvc.perform(post("/api/calculate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendation").value("B")); // 짧은 시간이 유리
+    }
 }

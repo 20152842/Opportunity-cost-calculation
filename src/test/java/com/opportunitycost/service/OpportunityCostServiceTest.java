@@ -164,4 +164,60 @@ class OpportunityCostServiceTest {
         CostBreakdown optionA = response.getOptionA();
         assertEquals(166L, optionA.getTimeCost()); // floor 처리 확인
     }
+
+    @Test
+    @DisplayName("매우 큰 시급 입력 (경고 임계값 이상)")
+    void testCalculate_VeryHighWage() {
+        // Given
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(1_500_000L); // 경고 임계값(1,000,000) 이상
+        request.setOptionA(new ComparisonOption(10, 1000L));
+        request.setOptionB(new ComparisonOption(20, 0L));
+
+        // When
+        CalculationResponse response = service.calculate(request);
+
+        // Then - 경고는 나지만 계산은 정상적으로 수행됨
+        assertNotNull(response);
+        // 시간 비용: 1,500,000/60 × 10 = 250,000원
+        assertEquals(250000L, response.getOptionA().getTimeCost());
+    }
+
+    @Test
+    @DisplayName("매우 긴 시간 입력")
+    void testCalculate_VeryLongTime() {
+        // Given
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(15000L);
+        request.setOptionA(new ComparisonOption(500, 0L)); // 500분 = 8시간 이상
+        request.setOptionB(new ComparisonOption(10, 0L));
+
+        // When
+        CalculationResponse response = service.calculate(request);
+
+        // Then
+        assertEquals("B", response.getRecommendation());
+        // A의 시간 비용: 15,000/60 × 500 = 125,000원
+        assertEquals(125000L, response.getOptionA().getTimeCost());
+    }
+
+    @Test
+    @DisplayName("캐시 동작 테스트")
+    void testCalculate_CacheWorks() {
+        // Given
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(15000L);
+        request.setOptionA(new ComparisonOption(10, 3000L));
+        request.setOptionB(new ComparisonOption(40, 2300L));
+
+        // When - 첫 번째 호출
+        CalculationResponse response1 = service.calculate(request);
+        
+        // When - 두 번째 호출 (동일한 요청)
+        CalculationResponse response2 = service.calculate(request);
+
+        // Then - 결과가 동일해야 함 (캐시에서 반환)
+        assertEquals(response1.getRecommendation(), response2.getRecommendation());
+        assertEquals(response1.getCostDifference(), response2.getCostDifference());
+    }
 }
