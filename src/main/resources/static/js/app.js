@@ -643,16 +643,17 @@ function saveToHistory(mode, request, result) {
     if (history.length > MAX_HISTORY) {
         history = history.slice(0, MAX_HISTORY);
     }
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    // sessionStorage 사용: 탭 닫으면 자동 삭제
+    sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
 function getHistory() {
-    const stored = localStorage.getItem(HISTORY_KEY);
+    const stored = sessionStorage.getItem(HISTORY_KEY);
     return stored ? JSON.parse(stored) : [];
 }
 
 function clearHistory() {
-    localStorage.removeItem(HISTORY_KEY);
+    sessionStorage.removeItem(HISTORY_KEY);
     renderHistory();
 }
 
