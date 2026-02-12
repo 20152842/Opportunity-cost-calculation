@@ -26,12 +26,12 @@
 5) Total Cost Index(= 총비용)로 비교 결과를 직관적으로 표시  
 6) 프리셋 예시 제공(온보딩)
 
-#### ➕ 부가 기능(확장)
-- 다안 비교(3~5개)
-- 결정 히스토리 저장(localStorage)
-- 피로/스트레스 비용 옵션
-- 배포(Vercel 등)
-- 계산 로직 단위 테스트
+#### ➕ 부가 기능(확장) ✅ 구현 완료
+- ✅ 다안 비교(3~5개) - 동적 선택지 추가/제거 지원
+- ✅ 결정 히스토리 저장(localStorage) - 최대 20개 저장, 재사용 가능
+- ✅ 계산 결과 캐싱 - 성능 최적화
+- ✅ 배포 준비 완료 - Docker, Heroku, Railway, AWS, GCP 지원
+- ✅ 계산 로직 단위 테스트 - 서비스 및 컨트롤러 테스트
 
 ---
 
@@ -118,15 +118,106 @@ AI 사용 내역은 “무엇을 요청했고, 어떻게 검증/수정했는지�
 
 ## (4) 실행 방법
 
-### 1) 설치
+### 사전 요구사항
+- Java 17 이상
+- Maven 3.6 이상
+
+### 1) 프로젝트 빌드
 ```bash
-npm install
+mvn clean install
 ```
 
-### 2) 실행
+### 2) 애플리케이션 실행
 ```bash
-npm run dev
+mvn spring-boot:run
+```
+
+또는 빌드된 JAR 파일 실행:
+```bash
+java -jar target/opportunity-cost-calculation-1.0.0.jar
 ```
 
 ### 3) 접속
-터미널에 출력되는 로컬 주소로 접속합니다. (예: http://localhost:5173 또는 http://localhost:3000)
+브라우저에서 다음 주소로 접속합니다:
+- http://localhost:8080
+
+### 4) 테스트 실행
+```bash
+mvn test
+```
+
+---
+
+## 기술 스택
+
+- **Backend**: Java 17, Spring Boot 3.2.0
+- **Build Tool**: Maven
+- **Frontend**: HTML5, CSS3, JavaScript (Vanilla JS)
+- **Template Engine**: Thymeleaf (선택사항)
+- **Validation**: Jakarta Validation
+- **Testing**: JUnit 5
+
+---
+
+## 프로젝트 구조
+
+```
+opportunity-cost-calculation/
+├── src/
+│   ├── main/
+│   │   ├── java/com/opportunitycost/
+│   │   │   ├── OpportunityCostApplication.java    # 메인 애플리케이션
+│   │   │   ├── controller/                        # REST API 컨트롤러
+│   │   │   ├── service/                           # 비즈니스 로직
+│   │   │   ├── model/                             # 도메인 모델
+│   │   │   └── dto/                               # 데이터 전송 객체
+│   │   └── resources/
+│   │       ├── static/                            # 정적 리소스 (CSS, JS)
+│   │       ├── templates/                         # HTML 템플릿
+│   │       └── application.properties             # 설정 파일
+│   └── test/
+│       └── java/com/opportunitycost/              # 테스트 코드
+├── pom.xml                                         # Maven 설정
+└── README.md
+```
+
+---
+
+## API 엔드포인트
+
+### POST /api/calculate
+기회비용을 계산합니다.
+
+**Request Body:**
+```json
+{
+  "hourlyWage": 15000,
+  "optionA": {
+    "timeMinutes": 10,
+    "directCost": 3000
+  },
+  "optionB": {
+    "timeMinutes": 40,
+    "directCost": 2300
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "optionA": {
+    "directCost": 3000,
+    "timeCost": 2500,
+    "totalCost": 5500
+  },
+  "optionB": {
+    "directCost": 2300,
+    "timeCost": 10000,
+    "totalCost": 12300
+  },
+  "recommendation": "A",
+  "costDifference": 6800,
+  "formula": "총 비용 = 직접 비용 + (시급 ÷ 60) × 소요 시간(분)..."
+}
+```

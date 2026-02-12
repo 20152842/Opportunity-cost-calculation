@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>기회비용 계산기</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⏰ 시간 = 돈 계산기</h1>
+            <p class="subtitle">직접 비용과 시간 비용을 합쳐서 비교해보세요</p>
+        </header>
+
+        <main>
+            <!-- 시급 입력 섹션 -->
+            <section class="input-section">
+                <h2>1. 시급 입력</h2>
+                <div class="input-group">
+                    <label for="hourlyWage">시급 (원/시간)</label>
+                    <input type="number" id="hourlyWage" min="1" placeholder="예: 15000" required>
+                    <span class="helper-text">분당 가치: <span id="perMinuteValue">-</span>원/분</span>
+                </div>
+            </section>
+
+            <!-- 선택지 입력 섹션 -->
+            <section class="input-section">
+                <h2>2. 선택지 비교</h2>
+                <div class="comparison-container">
+                    <!-- 선택지 A -->
+                    <div class="option-card">
+                        <h3>선택지 A</h3>
+                        <div class="input-group">
+                            <label for="optionA-time">소요 시간 (분)</label>
+                            <input type="number" id="optionA-time" min="0" placeholder="예: 10" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="optionA-cost">직접 비용 (원)</label>
+                            <input type="number" id="optionA-cost" min="0" placeholder="예: 3000" required>
+                        </div>
+                    </div>
+
+                    <!-- 선택지 B -->
+                    <div class="option-card">
+                        <h3>선택지 B</h3>
+                        <div class="input-group">
+                            <label for="optionB-time">소요 시간 (분)</label>
+                            <input type="number" id="optionB-time" min="0" placeholder="예: 40" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="optionB-cost">직접 비용 (원)</label>
+                            <input type="number" id="optionB-cost" min="0" placeholder="예: 2300" required>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 비교 모드 선택 -->
+            <section class="mode-section">
+                <h2>비교 모드 선택</h2>
+                <div class="mode-buttons">
+                    <button id="mode2Btn" class="mode-btn active" data-mode="2">2개 선택지 비교</button>
+                    <button id="modeMultiBtn" class="mode-btn" data-mode="multi">다안 비교 (3~5개)</button>
+                </div>
+            </section>
+
+            <!-- 다안 비교 입력 섹션 (초기 숨김) -->
+            <section id="multiInputSection" class="input-section hidden">
+                <h2>3. 다안 비교 입력</h2>
+                <div id="multiOptionsContainer" class="multi-options-container">
+                    <!-- 동적으로 추가됨 -->
+                </div>
+                <button id="addOptionBtn" class="add-option-btn">+ 선택지 추가</button>
+                <button id="removeOptionBtn" class="remove-option-btn hidden">- 선택지 제거</button>
+            </section>
+
+            <!-- 프리셋 예시 -->
+            <section class="preset-section">
+                <h2>📋 예시 시나리오</h2>
+                <div class="preset-buttons">
+                    <button class="preset-btn" data-preset="mart">더 싼 마트 vs 가까운 편의점</button>
+                    <button class="preset-btn" data-preset="cooking">직접 요리 vs 배달</button>
+                    <button class="preset-btn" data-preset="delivery">무료배송 기다리기 vs 유료배송</button>
+                </div>
+            </section>
+
+            <!-- 계산 버튼 -->
+            <div class="action-section">
+                <button id="calculateBtn" class="calculate-btn">계산하기</button>
+                <p class="helper-text" style="text-align: center; margin-top: 10px; color: #666;">
+                    💡 팁: Enter 키를 눌러도 계산할 수 있습니다
+                </p>
+            </div>
+
+            <!-- 결과 섹션 -->
+            <section id="resultSection" class="result-section hidden">
+                <h2>📊 계산 결과</h2>
+                
+                <div class="recommendation-box">
+                    <div class="recommendation" id="recommendation">
+                        추천: <span id="recommendationText">-</span>
+                    </div>
+                    <div class="difference" id="difference">
+                        차액: <span id="differenceText">-</span>원
+                    </div>
+                </div>
+
+                <div class="result-container">
+                    <!-- 선택지 A 결과 -->
+                    <div class="result-card">
+                        <h3>선택지 A</h3>
+                        <div class="cost-breakdown">
+                            <div class="cost-item">
+                                <span class="cost-label">직접 비용:</span>
+                                <span class="cost-value" id="resultA-direct">-</span>원
+                            </div>
+                            <div class="cost-item">
+                                <span class="cost-label">시간 비용:</span>
+                                <span class="cost-value" id="resultA-time">-</span>원
+                            </div>
+                            <div class="cost-item total">
+                                <span class="cost-label">총 비용:</span>
+                                <span class="cost-value" id="resultA-total">-</span>원
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 선택지 B 결과 -->
+                    <div class="result-card">
+                        <h3>선택지 B</h3>
+                        <div class="cost-breakdown">
+                            <div class="cost-item">
+                                <span class="cost-label">직접 비용:</span>
+                                <span class="cost-value" id="resultB-direct">-</span>원
+                            </div>
+                            <div class="cost-item">
+                                <span class="cost-label">시간 비용:</span>
+                                <span class="cost-value" id="resultB-time">-</span>원
+                            </div>
+                            <div class="cost-item total">
+                                <span class="cost-label">총 비용:</span>
+                                <span class="cost-value" id="resultB-total">-</span>원
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 계산식 토글 -->
+                <div class="formula-section">
+                    <button class="formula-toggle" id="formulaToggle">
+                        📐 계산식 보기
+                    </button>
+                    <div class="formula-content hidden" id="formulaContent">
+                        <pre id="formulaText"></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 에러 메시지 -->
+            <div id="errorMessage" class="error-message hidden"></div>
+
+            <!-- 히스토리 섹션 -->
+            <section id="historySection" class="history-section">
+                <h2>📜 계산 히스토리</h2>
+                <div class="history-controls">
+                    <button id="showHistoryBtn" class="history-btn">히스토리 보기</button>
+                    <button id="clearHistoryBtn" class="history-btn">히스토리 삭제</button>
+                </div>
+                <div id="historyList" class="history-list"></div>
+            </section>
+        </main>
+
+        <footer>
+            <p>기회비용 계산기 | Total Cost Index = 직접 비용 + 시간 비용</p>
+        </footer>
+    </div>
+
+    <script th:src="@{/js/app.js}"></script>
+</body>
+</html>
