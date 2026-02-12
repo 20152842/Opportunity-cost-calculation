@@ -43,15 +43,35 @@ hourlyWageInput.addEventListener('input', () => {
 document.querySelectorAll('.preset-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         const preset = presets[btn.dataset.preset];
-        if (preset) {
-            hourlyWageInput.value = preset.hourlyWage;
+        if (!preset) return;
+
+        // 공통: 시급 설정 + 분당 가치 업데이트
+        hourlyWageInput.value = preset.hourlyWage;
+        hourlyWageInput.dispatchEvent(new Event('input'));
+
+        if (currentMode === 'multi') {
+            // 다안 비교 모드에서는 다안 입력 영역을 프리셋 값으로 채움
+            // data-index를 사용하여 직접 선택지 입력 필드를 찾음
+            const timeInputA = document.querySelector('.multi-time-input[data-index="0"]');
+            const costInputA = document.querySelector('.multi-cost-input[data-index="0"]');
+            const timeInputB = document.querySelector('.multi-time-input[data-index="1"]');
+            const costInputB = document.querySelector('.multi-cost-input[data-index="1"]');
+
+            if (timeInputA && costInputA && timeInputB && costInputB) {
+                timeInputA.value = preset.optionA.timeMinutes;
+                costInputA.value = preset.optionA.directCost;
+                timeInputB.value = preset.optionB.timeMinutes;
+                costInputB.value = preset.optionB.directCost;
+            } else {
+                // 다안 비교 입력 필드가 아직 초기화되지 않은 경우
+                showError('다안 비교 모드로 먼저 전환해주세요.');
+            }
+        } else {
+            // 기본 2안 비교 모드에서는 기존 A/B 입력 필드를 채움
             optionATimeInput.value = preset.optionA.timeMinutes;
             optionACostInput.value = preset.optionA.directCost;
             optionBTimeInput.value = preset.optionB.timeMinutes;
             optionBCostInput.value = preset.optionB.directCost;
-            
-            // 분당 가치 업데이트
-            hourlyWageInput.dispatchEvent(new Event('input'));
         }
     });
 });
@@ -256,10 +276,17 @@ document.addEventListener('keypress', (e) => {
     }
 });
 
-// 에러 메시지 표시
+// 에러 메시지 표시 (알림창 사용)
 function showError(message) {
+    // 1. alert로 즉시 알림
+    alert(message);
+    
+    // 2. 하단 에러 메시지도 표시 (참고용)
     errorMessage.textContent = message;
     errorMessage.classList.remove('hidden');
+    
+    // 3. 상단으로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // 에러 메시지 숨김
@@ -394,21 +421,63 @@ function updateMultiButtons() {
 
 // 다안 비교 계산
 async function calculateMulti() {
-    const hourlyWage = parseInt(hourlyWageInput.value.trim());
+    // 시급 검증
+    const hourlyWageStr = hourlyWageInput.value.trim();
+    if (!hourlyWageStr || hourlyWageStr === '') {
+        showError('시급을 입력해주세요.');
+        hourlyWageInput.focus();
+        return;
+    }
+    
+    const hourlyWage = parseInt(hourlyWageStr);
+    if (isNaN(hourlyWage) || hourlyWage < 1) {
+        showError('시급은 1원 이상의 숫자여야 합니다.');
+        hourlyWageInput.focus();
+        return;
+    }
+    
+    // 큰 값 경고
+    if (hourlyWage >= 1000000) {
+        if (!confirm(`입력하신 시급(${hourlyWage.toLocaleString()}원)이 매우 높습니다. 계속하시겠습니까?`)) {
+            return;
+        }
+    }
+    
     const options = [];
     
     for (let i = 0; i < multiOptionCount; i++) {
         const timeInput = document.querySelector(`.multi-time-input[data-index="${i}"]`);
         const costInput = document.querySelector(`.multi-cost-input[data-index="${i}"]`);
         
+        if (!timeInput || !costInput) {
+            showError(`선택지 ${String.fromCharCode(65 + i)} 입력 필드를 찾을 수 없습니다.`);
+            return;
+        }
+        
         if (!timeInput.value.trim() || !costInput.value.trim()) {
             showError(`선택지 ${String.fromCharCode(65 + i)}의 모든 값을 입력해주세요.`);
+            timeInput.focus();
+            return;
+        }
+        
+        const timeMinutes = parseInt(timeInput.value.trim());
+        const directCost = parseInt(costInput.value.trim());
+        
+        if (isNaN(timeMinutes) || timeMinutes < 0) {
+            showError(`선택지 ${String.fromCharCode(65 + i)}의 소요 시간은 0분 이상이어야 합니다.`);
+            timeInput.focus();
+            return;
+        }
+        
+        if (isNaN(directCost) || directCost < 0) {
+            showError(`선택지 ${String.fromCharCode(65 + i)}의 직접 비용은 0원 이상이어야 합니다.`);
+            costInput.focus();
             return;
         }
         
         options.push({
-            timeMinutes: parseInt(timeInput.value.trim()),
-            directCost: parseInt(costInput.value.trim())
+            timeMinutes,
+            directCost
         });
     }
     
