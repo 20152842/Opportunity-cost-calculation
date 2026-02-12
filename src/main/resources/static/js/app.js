@@ -2,16 +2,38 @@
 const presets = {
     mart: {
         hourlyWage: 15000,
+        options: [
+            { timeMinutes: 10, directCost: 3000 },   // A: 가까운 마트 (빠르고 조금 비쌈)
+            { timeMinutes: 40, directCost: 2300 },   // B: 먼 마트 (느리고 쌈)
+            { timeMinutes: 25, directCost: 2800 },   // C: 중간 거리 마트
+            { timeMinutes: 5, directCost: 3500 },    // D: 편의점 (매우 빠르고 비쌈)
+            { timeMinutes: 60, directCost: 2000 }    // E: 대형마트 (매우 느리고 가장 쌈)
+        ],
+        // 하위 호환성을 위해 유지
         optionA: { timeMinutes: 10, directCost: 3000 },
         optionB: { timeMinutes: 40, directCost: 2300 }
     },
     cooking: {
         hourlyWage: 20000,
+        options: [
+            { timeMinutes: 60, directCost: 6000 },   // A: 직접 요리 (시간 많이, 비용 적음)
+            { timeMinutes: 10, directCost: 14000 },  // B: 배달 (빠르고 비쌈)
+            { timeMinutes: 30, directCost: 8000 },   // C: 간편식 (중간)
+            { timeMinutes: 90, directCost: 5000 },   // D: 본격 요리 (시간 더 많이, 비용 최소)
+            { timeMinutes: 5, directCost: 16000 }    // E: 고급 배달 (매우 빠르고 매우 비쌈)
+        ],
         optionA: { timeMinutes: 60, directCost: 6000 },
         optionB: { timeMinutes: 10, directCost: 14000 }
     },
     delivery: {
         hourlyWage: 15000,
+        options: [
+            { timeMinutes: 120, directCost: 0 },     // A: 무료배송 기다리기 (느리고 무료)
+            { timeMinutes: 10, directCost: 3000 },   // B: 당일배송 (빠르고 유료)
+            { timeMinutes: 60, directCost: 1500 },   // C: 일반배송 (중간 속도, 중간 가격)
+            { timeMinutes: 5, directCost: 5000 },    // D: 새벽배송 (매우 빠르고 비쌈)
+            { timeMinutes: 180, directCost: 0 }      // E: 무료배송 느린 옵션
+        ],
         optionA: { timeMinutes: 120, directCost: 0 },
         optionB: { timeMinutes: 10, directCost: 3000 }
     }
@@ -45,26 +67,40 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
         const preset = presets[btn.dataset.preset];
         if (!preset) return;
 
+        console.log('프리셋 클릭:', btn.dataset.preset, 'currentMode:', currentMode);
+
         // 공통: 시급 설정 + 분당 가치 업데이트
         hourlyWageInput.value = preset.hourlyWage;
         hourlyWageInput.dispatchEvent(new Event('input'));
 
         if (currentMode === 'multi') {
-            // 다안 비교 모드에서는 다안 입력 영역을 프리셋 값으로 채움
-            // data-index를 사용하여 직접 선택지 입력 필드를 찾음
-            const timeInputA = document.querySelector('.multi-time-input[data-index="0"]');
-            const costInputA = document.querySelector('.multi-cost-input[data-index="0"]');
-            const timeInputB = document.querySelector('.multi-time-input[data-index="1"]');
-            const costInputB = document.querySelector('.multi-cost-input[data-index="1"]');
-
-            if (timeInputA && costInputA && timeInputB && costInputB) {
-                timeInputA.value = preset.optionA.timeMinutes;
-                costInputA.value = preset.optionA.directCost;
-                timeInputB.value = preset.optionB.timeMinutes;
-                costInputB.value = preset.optionB.directCost;
+            console.log('다안 비교 모드에서 프리셋 적용 시도');
+            console.log('현재 선택지 개수:', multiOptionCount);
+            
+            // 다안 비교 모드: 모든 선택지를 프리셋의 options 배열로 채움
+            let filledCount = 0;
+            for (let i = 0; i < multiOptionCount; i++) {
+                const timeInput = document.querySelector(`.multi-time-input[data-index="${i}"]`);
+                const costInput = document.querySelector(`.multi-cost-input[data-index="${i}"]`);
+                
+                if (timeInput && costInput && preset.options && preset.options[i]) {
+                    timeInput.value = preset.options[i].timeMinutes;
+                    costInput.value = preset.options[i].directCost;
+                    filledCount++;
+                    console.log(`선택지 ${String.fromCharCode(65 + i)} 채움:`, preset.options[i]);
+                } else if (timeInput && costInput) {
+                    console.warn(`선택지 ${String.fromCharCode(65 + i)}: 프리셋 데이터 없음, 빈 값으로 유지`);
+                }
+            }
+            
+            if (filledCount > 0) {
+                console.log(`프리셋 적용 완료: ${filledCount}개 선택지 채움`);
             } else {
-                // 다안 비교 입력 필드가 아직 초기화되지 않은 경우
-                showError('다안 비교 모드로 먼저 전환해주세요.');
+                console.error('입력 필드를 찾을 수 없음');
+                // 에러 메시지 표시 (alert는 제거하고 하단 메시지와 스크롤만)
+                errorMessage.textContent = '다안 비교 입력 필드를 찾을 수 없습니다. 다안 비교 모드로 먼저 전환해주세요.';
+                errorMessage.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } else {
             // 기본 2안 비교 모드에서는 기존 A/B 입력 필드를 채움
@@ -276,16 +312,15 @@ document.addEventListener('keypress', (e) => {
     }
 });
 
-// 에러 메시지 표시 (알림창 사용)
+// 에러 메시지 표시
 function showError(message) {
-    // 1. alert로 즉시 알림
-    alert(message);
+    console.error('에러 발생:', message);
     
-    // 2. 하단 에러 메시지도 표시 (참고용)
+    // 1. 하단 에러 메시지 표시
     errorMessage.textContent = message;
     errorMessage.classList.remove('hidden');
     
-    // 3. 상단으로 스크롤
+    // 2. 상단으로 스크롤
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
