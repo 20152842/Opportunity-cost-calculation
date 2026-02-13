@@ -112,64 +112,60 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
     });
 });
 
-// 기본 계산(2개 선택지) 호출 함수
-async function calculateTwoOptions() {
-    // 입력 검증
-    if (!validateInputs()) {
-        return;
-    }
+// ========== 유틸리티 함수 ==========
 
-    // 로딩 상태 표시
-    setLoadingState(true);
+// 에러 메시지 표시
+const showError = (message) => {
+    console.error('에러 발생:', message);
+    
+    // 1. 하단 에러 메시지 표시
+    errorMessage.textContent = message;
+    errorMessage.classList.remove('hidden');
+    
+    // 2. 상단으로 스크롤
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
-    // 요청 데이터 구성
-    const requestData = {
-        hourlyWage: parseInt(hourlyWageInput.value.trim()),
-        optionA: {
-            timeMinutes: parseInt(optionATimeInput.value.trim()),
-            directCost: parseInt(optionACostInput.value.trim())
-        },
-        optionB: {
-            timeMinutes: parseInt(optionBTimeInput.value.trim()),
-            directCost: parseInt(optionBCostInput.value.trim())
-        }
+// 에러 메시지 숨김
+const hideError = () => {
+    errorMessage.classList.add('hidden');
+};
+
+// 검증 오류 포맷팅
+const formatValidationErrors = (errors) => {
+    const messages = [];
+    const fieldNames = {
+        'hourlyWage': '시급',
+        'optionA.timeMinutes': '선택지 A의 소요 시간',
+        'optionA.directCost': '선택지 A의 직접 비용',
+        'optionB.timeMinutes': '선택지 B의 소요 시간',
+        'optionB.directCost': '선택지 B의 직접 비용'
     };
-
-    try {
-        // API 호출
-        const response = await fetch('/api/calculate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(requestData)
-        });
-
-        if (!response.ok) {
-            let errorMessage = '계산 중 오류가 발생했습니다.';
-            try {
-                const errorData = await response.json();
-                errorMessage = formatValidationErrors(errorData);
-            } catch (e) {
-                errorMessage = `서버 오류 (${response.status}): ${response.statusText}`;
-            }
-            showError(errorMessage);
-            return;
-        }
-
-        const result = await response.json();
-        displayResult(result);
-        saveToHistory('2', requestData, result);
-        hideError();
-    } catch (error) {
-        showError('네트워크 오류가 발생했습니다: ' + error.message);
-    } finally {
-        setLoadingState(false);
+    
+    for (const [field, message] of Object.entries(errors)) {
+        const fieldName = fieldNames[field] || field;
+        messages.push(`${fieldName}: ${message}`);
     }
-}
+    return messages.join('\n');
+};
+
+// 로딩 상태 관리
+const setLoadingState = (isLoading) => {
+    if (isLoading) {
+        calculateBtn.disabled = true;
+        calculateBtn.textContent = '계산 중...';
+        calculateBtn.style.opacity = '0.6';
+    } else {
+        calculateBtn.disabled = false;
+        calculateBtn.textContent = '계산하기';
+        calculateBtn.style.opacity = '1';
+    }
+};
+
+// ========== 2안 비교 기능 ==========
 
 // 입력 검증
-function validateInputs() {
+const validateInputs = () => {
     // 빈 문자열 체크 및 숫자 변환
     const hourlyWageStr = hourlyWageInput.value.trim();
     const optionATimeStr = optionATimeInput.value.trim();
@@ -257,10 +253,66 @@ function validateInputs() {
     }
 
     return true;
-}
+};
+
+// 기본 계산(2개 선택지) 호출 함수
+const calculateTwoOptions = async () => {
+    // 입력 검증
+    if (!validateInputs()) {
+        return;
+    }
+
+    // 로딩 상태 표시
+    setLoadingState(true);
+
+    // 요청 데이터 구성
+    const requestData = {
+        hourlyWage: parseInt(hourlyWageInput.value.trim()),
+        optionA: {
+            timeMinutes: parseInt(optionATimeInput.value.trim()),
+            directCost: parseInt(optionACostInput.value.trim())
+        },
+        optionB: {
+            timeMinutes: parseInt(optionBTimeInput.value.trim()),
+            directCost: parseInt(optionBCostInput.value.trim())
+        }
+    };
+
+    try {
+        // API 호출
+        const response = await fetch('/api/calculate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            let errorMessage = '계산 중 오류가 발생했습니다.';
+            try {
+                const errorData = await response.json();
+                errorMessage = formatValidationErrors(errorData);
+            } catch (e) {
+                errorMessage = `서버 오류 (${response.status}): ${response.statusText}`;
+            }
+            showError(errorMessage);
+            return;
+        }
+
+        const result = await response.json();
+        displayResult(result);
+        saveToHistory('2', requestData, result);
+        hideError();
+    } catch (error) {
+        showError('네트워크 오류가 발생했습니다: ' + error.message);
+    } finally {
+        setLoadingState(false);
+    }
+};
 
 // 결과 표시
-function displayResult(result) {
+const displayResult = (result) => {
     // 추천 선택지
     const recommendationText = document.getElementById('recommendationText');
     const recommendation = result.recommendation;
@@ -318,92 +370,15 @@ function displayResult(result) {
     
     // 결과 섹션으로 스크롤
     resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// 계산식 토글
-document.getElementById('formulaToggle').addEventListener('click', () => {
-    const formulaContent = document.getElementById('formulaContent');
-    const formulaToggle = document.getElementById('formulaToggle');
-    formulaContent.classList.toggle('hidden');
-    if (formulaContent.classList.contains('hidden')) {
-        formulaToggle.textContent = '📐 계산식 보기';
-    } else {
-        formulaToggle.textContent = '📐 계산식 숨기기';
-    }
-});
-
-// Enter 키로 계산하기
-document.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !calculateBtn.disabled) {
-        calculateBtn.click();
-    }
-});
-
-// 에러 메시지 표시
-function showError(message) {
-    console.error('에러 발생:', message);
-    
-    // 1. 하단 에러 메시지 표시
-    errorMessage.textContent = message;
-    errorMessage.classList.remove('hidden');
-    
-    // 2. 상단으로 스크롤
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// 에러 메시지 숨김
-function hideError() {
-    errorMessage.classList.add('hidden');
-}
-
-// 검증 오류 포맷팅
-function formatValidationErrors(errors) {
-    const messages = [];
-    const fieldNames = {
-        'hourlyWage': '시급',
-        'optionA.timeMinutes': '선택지 A의 소요 시간',
-        'optionA.directCost': '선택지 A의 직접 비용',
-        'optionB.timeMinutes': '선택지 B의 소요 시간',
-        'optionB.directCost': '선택지 B의 직접 비용'
-    };
-    
-    for (const [field, message] of Object.entries(errors)) {
-        const fieldName = fieldNames[field] || field;
-        messages.push(`${fieldName}: ${message}`);
-    }
-    return messages.join('\n');
-}
-
-// 로딩 상태 관리
-function setLoadingState(isLoading) {
-    if (isLoading) {
-        calculateBtn.disabled = true;
-        calculateBtn.textContent = '계산 중...';
-        calculateBtn.style.opacity = '0.6';
-    } else {
-        calculateBtn.disabled = false;
-        calculateBtn.textContent = '계산하기';
-        calculateBtn.style.opacity = '1';
-    }
-}
+};
 
 // ========== 다안 비교 기능 ==========
 
 let currentMode = '2'; // '2' 또는 'multi'
 let multiOptionCount = 3;
 
-// 모드 전환
-document.getElementById('mode2Btn').addEventListener('click', () => {
-    currentMode = '2';
-    switchMode('2');
-});
-
-document.getElementById('modeMultiBtn').addEventListener('click', () => {
-    currentMode = 'multi';
-    switchMode('multi');
-});
-
-function switchMode(mode) {
+// 모드 전환 함수
+const switchMode = (mode) => {
     const twoInputSection = document.querySelector('.input-section:nth-of-type(2)');
     const multiInputSection = document.getElementById('multiInputSection');
     const mode2Btn = document.getElementById('mode2Btn');
@@ -421,10 +396,10 @@ function switchMode(mode) {
         modeMultiBtn.classList.add('active');
         initMultiOptions();
     }
-}
+};
 
 // 다안 비교 옵션 초기화
-function initMultiOptions() {
+const initMultiOptions = () => {
     const container = document.getElementById('multiOptionsContainer');
     container.innerHTML = '';
     
@@ -434,9 +409,9 @@ function initMultiOptions() {
     }
     
     updateMultiButtons();
-}
+};
 
-function createMultiOptionCard(index) {
+const createMultiOptionCard = (index) => {
     const card = document.createElement('div');
     card.className = 'multi-option-card';
     card.innerHTML = `
@@ -451,38 +426,18 @@ function createMultiOptionCard(index) {
         </div>
     `;
     return card;
-}
+};
 
-// 다안 비교 옵션 추가/제거
-document.getElementById('addOptionBtn').addEventListener('click', () => {
-    if (multiOptionCount < 5) {
-        multiOptionCount++;
-        const container = document.getElementById('multiOptionsContainer');
-        const optionCard = createMultiOptionCard(multiOptionCount - 1);
-        container.appendChild(optionCard);
-        updateMultiButtons();
-    }
-});
-
-document.getElementById('removeOptionBtn').addEventListener('click', () => {
-    if (multiOptionCount > 3) {
-        multiOptionCount--;
-        const container = document.getElementById('multiOptionsContainer');
-        container.removeChild(container.lastChild);
-        updateMultiButtons();
-    }
-});
-
-function updateMultiButtons() {
+const updateMultiButtons = () => {
     const addBtn = document.getElementById('addOptionBtn');
     const removeBtn = document.getElementById('removeOptionBtn');
     
     addBtn.disabled = multiOptionCount >= 5;
     removeBtn.classList.toggle('hidden', multiOptionCount <= 3);
-}
+};
 
 // 다안 비교 계산
-async function calculateMulti() {
+const calculateMulti = async () => {
     // 시급 검증
     const hourlyWageStr = hourlyWageInput.value.trim();
     if (!hourlyWageStr || hourlyWageStr === '') {
@@ -574,9 +529,9 @@ async function calculateMulti() {
     } finally {
         setLoadingState(false);
     }
-}
+};
 
-function displayMultiResult(result) {
+const displayMultiResult = (result) => {
     const resultSection = document.getElementById('resultSection');
     resultSection.innerHTML = `
         <h2>📊 다안 비교 결과</h2>
@@ -628,23 +583,14 @@ function displayMultiResult(result) {
     });
     
     resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// 계산 버튼 클릭 이벤트 (모드에 따라 분기)
-calculateBtn.addEventListener('click', async () => {
-    if (currentMode === 'multi') {
-        await calculateMulti();
-    } else {
-        await calculateTwoOptions();
-    }
-});
+};
 
 // ========== 히스토리 기능 ==========
 
 const HISTORY_KEY = 'opportunityCostHistory';
 const MAX_HISTORY = 20;
 
-function saveToHistory(mode, request, result) {
+const saveToHistory = (mode, request, result) => {
     let history = getHistory();
     const historyItem = {
         id: Date.now(),
@@ -659,19 +605,19 @@ function saveToHistory(mode, request, result) {
     }
     // sessionStorage 사용: 탭 닫으면 자동 삭제
     sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-}
+};
 
-function getHistory() {
+const getHistory = () => {
     const stored = sessionStorage.getItem(HISTORY_KEY);
     return stored ? JSON.parse(stored) : [];
-}
+};
 
-function clearHistory() {
+const clearHistory = () => {
     sessionStorage.removeItem(HISTORY_KEY);
     renderHistory();
-}
+};
 
-function renderHistory() {
+const renderHistory = () => {
     const historyList = document.getElementById('historyList');
     const history = getHistory();
     
@@ -701,9 +647,9 @@ function renderHistory() {
             </div>
         `;
     }).join('');
-}
+};
 
-function loadHistoryItem(id) {
+const loadHistoryItem = (id) => {
     const history = getHistory();
     const item = history.find(h => h.id === id);
     if (!item) return;
@@ -735,8 +681,70 @@ function loadHistoryItem(id) {
     } else {
         displayResult(item.result);
     }
-}
+};
 
+// ========== 이벤트 리스너 등록 ==========
+
+// 2안 비교 관련 이벤트
+document.getElementById('formulaToggle').addEventListener('click', () => {
+    const formulaContent = document.getElementById('formulaContent');
+    const formulaToggle = document.getElementById('formulaToggle');
+    formulaContent.classList.toggle('hidden');
+    if (formulaContent.classList.contains('hidden')) {
+        formulaToggle.textContent = '📐 계산식 보기';
+    } else {
+        formulaToggle.textContent = '📐 계산식 숨기기';
+    }
+});
+
+// Enter 키로 계산하기
+document.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !calculateBtn.disabled) {
+        calculateBtn.click();
+    }
+});
+
+// 계산 버튼 클릭 이벤트 (모드에 따라 분기)
+calculateBtn.addEventListener('click', async () => {
+    if (currentMode === 'multi') {
+        await calculateMulti();
+    } else {
+        await calculateTwoOptions();
+    }
+});
+
+// 모드 전환 버튼
+document.getElementById('mode2Btn').addEventListener('click', () => {
+    currentMode = '2';
+    switchMode('2');
+});
+
+document.getElementById('modeMultiBtn').addEventListener('click', () => {
+    currentMode = 'multi';
+    switchMode('multi');
+});
+
+// 다안 비교 옵션 추가/제거 버튼
+document.getElementById('addOptionBtn').addEventListener('click', () => {
+    if (multiOptionCount < 5) {
+        multiOptionCount++;
+        const container = document.getElementById('multiOptionsContainer');
+        const optionCard = createMultiOptionCard(multiOptionCount - 1);
+        container.appendChild(optionCard);
+        updateMultiButtons();
+    }
+});
+
+document.getElementById('removeOptionBtn').addEventListener('click', () => {
+    if (multiOptionCount > 3) {
+        multiOptionCount--;
+        const container = document.getElementById('multiOptionsContainer');
+        container.removeChild(container.lastChild);
+        updateMultiButtons();
+    }
+});
+
+// 히스토리 버튼
 document.getElementById('showHistoryBtn').addEventListener('click', () => {
     renderHistory();
 });
