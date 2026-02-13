@@ -392,8 +392,25 @@ const displayResult = (result) => {
         });
     }
     
-    // 추천 선택지
+    // DOM 요소 확인 및 안전한 접근
     const recommendationText = document.getElementById('recommendationText');
+    const differenceText = document.getElementById('differenceText');
+    const resultADirect = document.getElementById('resultA-direct');
+    const resultATime = document.getElementById('resultA-time');
+    const resultATotal = document.getElementById('resultA-total');
+    const resultBDirect = document.getElementById('resultB-direct');
+    const resultBTime = document.getElementById('resultB-time');
+    const resultBTotal = document.getElementById('resultB-total');
+    
+    // 필수 요소가 없으면 에러
+    if (!recommendationText || !differenceText || !resultADirect || !resultATime || 
+        !resultATotal || !resultBDirect || !resultBTime || !resultBTotal) {
+        console.error('2안 비교 결과 DOM 요소를 찾을 수 없습니다.');
+        showError('결과 표시 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+        return;
+    }
+    
+    // 추천 선택지
     const recommendation = result.recommendation;
     if (recommendation === '동일') {
         recommendationText.textContent = '차이 없음 (동일)';
@@ -402,24 +419,17 @@ const displayResult = (result) => {
     }
 
     // 차액
-    document.getElementById('differenceText').textContent = 
-        result.costDifference.toLocaleString();
+    differenceText.textContent = result.costDifference.toLocaleString();
 
     // 선택지 A 결과
-    document.getElementById('resultA-direct').textContent = 
-        result.optionA.directCost.toLocaleString();
-    document.getElementById('resultA-time').textContent = 
-        result.optionA.timeCost.toLocaleString();
-    document.getElementById('resultA-total').textContent = 
-        result.optionA.totalCost.toLocaleString();
+    resultADirect.textContent = result.optionA.directCost.toLocaleString();
+    resultATime.textContent = result.optionA.timeCost.toLocaleString();
+    resultATotal.textContent = result.optionA.totalCost.toLocaleString();
 
     // 선택지 B 결과
-    document.getElementById('resultB-direct').textContent = 
-        result.optionB.directCost.toLocaleString();
-    document.getElementById('resultB-time').textContent = 
-        result.optionB.timeCost.toLocaleString();
-    document.getElementById('resultB-total').textContent = 
-        result.optionB.totalCost.toLocaleString();
+    resultBDirect.textContent = result.optionB.directCost.toLocaleString();
+    resultBTime.textContent = result.optionB.timeCost.toLocaleString();
+    resultBTotal.textContent = result.optionB.totalCost.toLocaleString();
 
     // 계산식 - 상세 버전 (각 선택지별로)
     const hourlyWage = parseInt(hourlyWageInput.value.trim());
