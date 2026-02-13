@@ -470,3 +470,69 @@ presetBtn.addEventListener('click', function() {
   - 또는 spring-boot-devtools 추가 고려.
 - **결과**
   - 사용자 테스트 시 최신 코드 반영 확인.
+
+---
+
+## 18) 다안 비교 계산식이 간략하게 표시되던 문제
+
+- **증상**
+  - 다안 비교 모드에서 계산 완료 후 "📐 계산식 보기" 클릭 시,
+  - 2안 비교처럼 각 선택지별 상세 계산식이 아닌 간단한 공식만 표시됨.
+  - 예: "총 비용 = 직접 비용 + (시급 ÷ 60) × 소요 시간(분)" 만 표시.
+- **원인**
+  - 백엔드 `generateFormula()` 메서드가 일반 공식만 생성.
+  - 프론트엔드에서 각 선택지별 상세 계산식을 생성하지 않음.
+- **조치 내용**
+  - **프론트엔드 `displayMultiResult()` 함수 수정**:
+    ```javascript
+    // 각 선택지별 상세 계산식 자동 생성
+    result.results.forEach((r, index) => {
+        const timeMinutes = document.querySelector(`.multi-time-input[data-index="${index}"]`)?.value || '?';
+        detailedFormula += `【${r.optionName} 상세 계산】
+    ・직접 비용: ${r.breakdown.directCost.toLocaleString()}원
+    ・시간 비용: ${perMinute}원/분 × ${timeMinutes}분 = ${r.breakdown.timeCost.toLocaleString()}원
+    ・총 비용: ${r.breakdown.directCost.toLocaleString()}원 + ${r.breakdown.timeCost.toLocaleString()}원 = ${r.breakdown.totalCost.toLocaleString()}원\n`;
+    });
+    ```
+  - 추천 선택지 표시 및 최대 절약 금액 추가.
+- **결과**
+  - 다안 비교도 2안 비교와 동일한 수준의 상세 계산식 제공.
+  - 사용자가 각 선택지별 계산 근거를 명확히 확인 가능.
+- **커밋**: a1a9a08
+
+---
+
+## 19) 다안 비교 → 2안 비교 전환 시 DOM 에러 발생 (치명적)
+
+- **증상**
+  - 시나리오:
+    1. 다안 비교 모드 선택 → 계산 실행
+    2. 2안 비교 모드로 전환
+    3. 프리셋 선택 또는 수동 입력 후 계산 실행
+  - **에러 발생**: `네트워크 오류가 발생했습니다: null is not an object (evaluating 'document.getElementById('resultA-direct')...')`
+- **원인**
+  - `displayMultiResult()` 함수가 결과 섹션의 HTML을 완전히 덮어씀.
+  - 2안 비교에 필요한 DOM 요소 (`resultA-direct`, `resultB-direct` 등)가 사라짐.
+  - 이후 `displayResult()` 함수가 실행되면 존재하지 않는 요소를 참조하여 에러 발생.
+- **조치 내용**
+  1. **`displayResult()` 함수에 HTML 구조 자동 복원 로직 추가**:
+     ```javascript
+     if (!document.getElementById('resultA-direct')) {
+         resultSection.innerHTML = `원래 2안 비교 HTML 구조 복원...`;
+         // 계산식 토글 이벤트 리스너도 재등록
+     }
+     ```
+  2. **`switchMode()` 함수에서 모드 전환 시 결과 숨김**:
+     ```javascript
+     resultSection.classList.add('hidden');
+     hideError();
+     ```
+  3. **이벤트 리스너 재등록**: HTML 재생성 시 계산식 토글 버튼 이벤트도 자동 재등록.
+- **결과**
+  - 어떤 순서로 모드를 전환해도 에러 없이 정상 작동.
+  - DOM 구조가 자동으로 복원되어 사용자 경험 개선.
+- **커밋**: a1a9a08
+- **배운 점**
+  - SPA 스타일의 동적 HTML 교체 시 DOM 요소 의존성을 철저히 관리해야 함.
+  - innerHTML 덮어쓰기는 이벤트 리스너도 제거하므로 재등록 필수.
+  - 모드 전환 시 이전 상태(결과 표시) 초기화 필요.
