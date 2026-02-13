@@ -117,7 +117,60 @@ public class OpportunityCostService {
         // 총 비용 계산: 직접 비용 + 시간 비용
         Long totalCost = directCost + timeCost;
         
+        // 계산 결과 논리 검증
+        validateCalculationResult(directCost, timeCost, totalCost, timeMinutes, hourlyWage);
+        
         return new CostBreakdown(directCost, timeCost, totalCost);
+    }
+    
+    /**
+     * 계산 결과의 논리적 타당성을 검증합니다.
+     * 
+     * @param directCost 직접 비용 (원)
+     * @param timeCost 시간 비용 (원)
+     * @param totalCost 총 비용 (원)
+     * @param timeMinutes 소요 시간 (분)
+     * @param hourlyWage 시급 (원/시간)
+     */
+    private void validateCalculationResult(Long directCost, Long timeCost, Long totalCost, 
+                                           Integer timeMinutes, Long hourlyWage) {
+        // 1. 오버플로우 체크 (Long 범위: -9,223,372,036,854,775,808 ~ 9,223,372,036,854,775,807)
+        if (totalCost < 0 || totalCost < directCost || totalCost < timeCost) {
+            logger.error("총 비용 오버플로우 감지 - 직접비용: {}원, 시간비용: {}원, 총비용: {}원", 
+                directCost, timeCost, totalCost);
+            throw new IllegalArgumentException("계산 결과가 범위를 초과했습니다. 입력값을 확인해주세요.");
+        }
+        
+        // 2. 시간 비용이 비현실적으로 높은지 체크
+        // 시간 비용이 직접 비용의 100배를 초과하면 경고
+        if (directCost > 0 && timeCost > directCost * 100) {
+            logger.warn("시간 비용이 직접 비용의 100배 초과 - 직접비용: {}원, 시간비용: {}원, 소요시간: {}분", 
+                directCost, timeCost, timeMinutes);
+            logger.warn("입력 오류 가능성: 소요 시간을 시간 단위로 입력하지 않았는지 확인 필요");
+        }
+        
+        // 3. 총 비용이 비현실적으로 높은지 체크
+        // 총 비용이 10억원(1,000,000,000)을 초과하면 경고
+        if (totalCost > 1_000_000_000L) {
+            logger.warn("총 비용이 10억원 초과 - 총비용: {}원, 시급: {}원/시간, 소요시간: {}분", 
+                totalCost, hourlyWage, timeMinutes);
+            logger.warn("입력 오류 가능성: 시급이나 소요 시간을 잘못 입력하지 않았는지 확인 필요");
+        }
+        
+        // 4. 직접 비용 대비 시간 비용 비율 체크
+        // 시간이 0분이 아닌데 시간 비용이 0원이면 경고 (시급이 60원 미만인 경우)
+        if (timeMinutes > 0 && timeCost == 0) {
+            logger.warn("소요 시간이 {}분인데 시간 비용이 0원 - 시급: {}원/시간", timeMinutes, hourlyWage);
+            logger.warn("시급이 너무 낮아 시간 비용이 계산되지 않았습니다.");
+        }
+        
+        // 5. 논리적 일관성 체크
+        // 총 비용 = 직접 비용 + 시간 비용 공식 검증
+        if (!totalCost.equals(directCost + timeCost)) {
+            logger.error("계산식 오류 감지 - 총비용({}) ≠ 직접비용({}) + 시간비용({})", 
+                totalCost, directCost, timeCost);
+            throw new IllegalStateException("계산 로직에 오류가 발생했습니다.");
+        }
     }
     
     /**

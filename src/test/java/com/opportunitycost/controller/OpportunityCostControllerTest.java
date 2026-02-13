@@ -171,4 +171,61 @@ class OpportunityCostControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("소요 시간 상한선 초과 검증 테스트 (10,080분 초과)")
+    void testCalculate_ExceedsMaxTime() throws Exception {
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(15000L);
+        request.setOptionA(new ComparisonOption(20000, 3000L)); // 20,000분 (약 14일, 상한 초과)
+        request.setOptionB(new ComparisonOption(10, 2300L));
+
+        mockMvc.perform(post("/api/calculate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("직접 비용 상한선 초과 검증 테스트 (1억원 초과)")
+    void testCalculate_ExceedsMaxDirectCost() throws Exception {
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(15000L);
+        request.setOptionA(new ComparisonOption(10, 200_000_000L)); // 2억원 (상한 초과)
+        request.setOptionB(new ComparisonOption(10, 3000L));
+
+        mockMvc.perform(post("/api/calculate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("논리적으로 타당한 계산 결과 테스트")
+    void testCalculate_LogicallyValidResult() throws Exception {
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(15000L);
+        request.setOptionA(new ComparisonOption(10, 3000L));
+        request.setOptionB(new ComparisonOption(40, 2300L));
+
+        String response = mockMvc.perform(post("/api/calculate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        CalculationResponse result = objectMapper.readValue(response, CalculationResponse.class);
+        
+        // 논리적 검증: 총비용 = 직접비용 + 시간비용
+        assertEquals(
+            result.getOptionA().getTotalCost(),
+            result.getOptionA().getDirectCost() + result.getOptionA().getTimeCost()
+        );
+        assertEquals(
+            result.getOptionB().getTotalCost(),
+            result.getOptionB().getDirectCost() + result.getOptionB().getTimeCost()
+        );
+    }
 }

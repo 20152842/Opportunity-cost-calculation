@@ -220,4 +220,86 @@ class OpportunityCostServiceTest {
         assertEquals(response1.getRecommendation(), response2.getRecommendation());
         assertEquals(response1.getCostDifference(), response2.getCostDifference());
     }
+
+    @Test
+    @DisplayName("시간 비용이 직접 비용의 100배를 초과하는 경우 (경고 발생)")
+    void testCalculate_TimeCostExceedsDirectCost100Times() {
+        // Given: 시간 비용이 직접 비용의 100배를 초과하는 케이스
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(100000L); // 시급 100,000원
+        // A: 직접비용 1,000원, 소요시간 1,000분 → 시간비용 1,666,666원 (약 1,667배)
+        request.setOptionA(new ComparisonOption(1000, 1000L));
+        request.setOptionB(new ComparisonOption(10, 5000L));
+
+        // When - 계산 실행 (경고 로그는 발생하지만 계산은 정상 진행)
+        CalculationResponse response = service.calculate(request);
+
+        // Then - 계산은 정상적으로 완료됨
+        assertNotNull(response);
+        CostBreakdown optionA = response.getOptionA();
+        // 시간 비용: 100,000/60 × 1,000 = 1,666,666원
+        assertEquals(1666666L, optionA.getTimeCost());
+        // 총 비용: 1,000 + 1,666,666 = 1,667,666원
+        assertEquals(1667666L, optionA.getTotalCost());
+    }
+
+    @Test
+    @DisplayName("총 비용이 10억원을 초과하는 경우 (경고 발생)")
+    void testCalculate_TotalCostExceeds1Billion() {
+        // Given: 총 비용이 10억원을 초과하는 케이스
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(100000000L); // 시급 1억원 (상한선)
+        // A: 직접비용 0원, 소요시간 1,000분 → 시간비용 1,666,666,666원 (약 16.7억)
+        request.setOptionA(new ComparisonOption(1000, 0L));
+        request.setOptionB(new ComparisonOption(10, 5000L));
+
+        // When - 계산 실행 (경고 로그는 발생하지만 계산은 정상 진행)
+        CalculationResponse response = service.calculate(request);
+
+        // Then - 계산은 정상적으로 완료됨
+        assertNotNull(response);
+        CostBreakdown optionA = response.getOptionA();
+        // 시간 비용: 100,000,000/60 × 1,000 = 1,666,666,666원
+        assertEquals(1666666666L, optionA.getTimeCost());
+        // 총 비용: 0 + 1,666,666,666 = 1,666,666,666원
+        assertEquals(1666666666L, optionA.getTotalCost());
+    }
+
+    @Test
+    @DisplayName("시급이 60원 미만인 경우 시간 비용 0원 경고")
+    void testCalculate_VeryLowWageResultsInZeroTimeCost() {
+        // Given: 시급이 매우 낮아서 시간 비용이 0원이 되는 케이스
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(30L); // 시급 30원 (60원 미만)
+        request.setOptionA(new ComparisonOption(10, 1000L)); // 10분 소요
+        request.setOptionB(new ComparisonOption(20, 800L));
+
+        // When - 계산 실행 (경고 로그 발생)
+        CalculationResponse response = service.calculate(request);
+
+        // Then
+        CostBreakdown optionA = response.getOptionA();
+        // 시간 비용: 30/60 × 10 = 5원 → floor(5) = 5원
+        assertEquals(5L, optionA.getTimeCost());
+        assertEquals(1005L, optionA.getTotalCost());
+    }
+
+    @Test
+    @DisplayName("소요 시간이 0분이 아닌데 시간 비용이 0원인 경우 경고")
+    void testCalculate_NonZeroTimeButZeroTimeCost() {
+        // Given: 시급이 극도로 낮아서 1분에 대한 시간 비용이 0원
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(1L); // 시급 1원 (최소값)
+        request.setOptionA(new ComparisonOption(1, 1000L)); // 1분 소요
+        request.setOptionB(new ComparisonOption(10, 800L));
+
+        // When
+        CalculationResponse response = service.calculate(request);
+
+        // Then
+        CostBreakdown optionA = response.getOptionA();
+        // 시간 비용: 1/60 × 1 = 0.0166... → floor(0.0166) = 0원
+        assertEquals(0L, optionA.getTimeCost());
+        assertEquals(1000L, optionA.getTotalCost());
+    }
 }
