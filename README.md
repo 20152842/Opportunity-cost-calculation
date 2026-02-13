@@ -2,6 +2,8 @@
 
 ### 🌐 배포 URL
 https://opportunity-cost-calculation-production.up.railway.app/
+### 📖 기획서 URL
+https://www.notion.so/306329c490238003b370d022e0edf0d4#306329c4902381c0bdd2e1e08bc9d04c
 
 ---
 
