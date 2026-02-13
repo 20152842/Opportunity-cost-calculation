@@ -1,7 +1,7 @@
 ## Opportunity-cost-calculation
 
 ### 🌐 배포 URL
-**실제 동작 확인**: https://opportunity-cost-calculation-production.up.railway.app/
+https://opportunity-cost-calculation-production.up.railway.app/
 
 ---
 
