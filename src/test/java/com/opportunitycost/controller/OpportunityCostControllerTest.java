@@ -157,4 +157,18 @@ class OpportunityCostControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recommendation").value("B")); // 짧은 시간이 유리
     }
+
+    @Test
+    @DisplayName("시급 상한선 초과 검증 테스트 (1억원 초과)")
+    void testCalculate_ExceedsMaxWage() throws Exception {
+        CalculationRequest request = new CalculationRequest();
+        request.setHourlyWage(200_000_000L); // 2억원/시간 (상한 초과)
+        request.setOptionA(new ComparisonOption(10, 0L));
+        request.setOptionB(new ComparisonOption(5, 0L));
+
+        mockMvc.perform(post("/api/calculate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
 }

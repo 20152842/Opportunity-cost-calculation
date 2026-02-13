@@ -189,6 +189,13 @@ function validateInputs() {
         hourlyWageInput.focus();
         return false;
     }
+    
+    // 상한선 체크 (1억원)
+    if (hourlyWage > 100000000) {
+        showError('시급은 1억원 이하로 입력해주세요.');
+        hourlyWageInput.focus();
+        return false;
+    }
 
     // 큰 값 경고 (1,000,000원 이상)
     if (hourlyWage >= 1000000) {
@@ -487,6 +494,13 @@ async function calculateMulti() {
     const hourlyWage = parseInt(hourlyWageStr);
     if (isNaN(hourlyWage) || hourlyWage < 1) {
         showError('시급은 1원 이상의 숫자여야 합니다.');
+        hourlyWageInput.focus();
+        return;
+    }
+    
+    // 상한선 체크 (1억원)
+    if (hourlyWage > 100000000) {
+        showError('시급은 1억원 이하로 입력해주세요.');
         hourlyWageInput.focus();
         return;
     }

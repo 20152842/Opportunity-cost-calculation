@@ -206,3 +206,188 @@
   - 기능 확장 시 **데이터 구조의 확장성**을 미리 고려해야 한다.
   - 하위 호환성(`optionA`, `optionB` 유지)과 확장성(`options` 배열) 모두 고려.
   - 프리셋은 단순히 "예시"가 아니라 **UX의 핵심 요소**임을 재인식.
+
+---
+
+## 10) PowerShell에서 Git 커밋 heredoc 구문 오류
+
+- **증상**
+  - Git 커밋 시 heredoc(`$(cat <<'EOF' ... EOF)`) 구문을 사용하면,
+  - PowerShell에서 `ParserError: InvalidEndOfLine` 오류 발생.
+- **원인 가설**
+  - PowerShell의 heredoc 구문은 Bash와 다름.
+  - Git 명령을 PowerShell에서 실행할 때 구문 오류 발생.
+- **조치 내용**
+  - 커밋 메시지를 **간략한 한 줄 요약**으로 변경.
+  - 상세한 내용은 문서(`CHANGELOG.md`, `RETROSPECTIVE.md`)에 기록.
+  - 예) `feat: improve UX based on user feedback` (간략)
+       → 상세 내용은 CHANGELOG에 표로 정리
+- **결과**
+  - 커밋 성공.
+  - Git 로그는 깔끔하게 유지, 상세 내용은 문서에서 확인 가능.
+- **배운 점**
+  - 환경(Bash vs PowerShell) 차이를 고려한 명령어 작성 필요.
+  - 커밋 메시지는 간결하게, 상세 내용은 문서화가 더 유연한 전략.
+
+---
+
+## 11) Spring Boot 애플리케이션 포트 충돌 (8080 이미 사용 중)
+
+- **증상**
+  - `mvn spring-boot:run` 실행 시,
+  - `Web server failed to start. Port 8080 was already in use.` 오류 발생.
+- **원인**
+  - 이전에 실행한 Spring Boot 프로세스가 종료되지 않고 백그라운드에서 실행 중.
+- **조치 내용**
+  - PowerShell에서 Java 프로세스 확인 및 종료:
+    ```powershell
+    Get-Process -Name java -ErrorAction SilentlyContinue | Stop-Process -Force
+    ```
+  - 3초 대기 후 재시작.
+- **결과**
+  - 포트 충돌 해결, 서버 정상 시작.
+- **배운 점**
+  - 개발 중 서버 재시작이 빈번할 때는 **포트 충돌 처리 스크립트** 미리 준비.
+  - 또는 `application.yml`에서 `server.port=0` (랜덤 포트) 사용 고려.
+
+---
+
+## 12) 캐시 동작 검증 및 로그 추적
+
+- **증상**
+  - 동일한 요청을 2번 보냈을 때, 두 번째 요청에서 캐시가 적중되는지 확인 필요.
+  - 로그에 "캐시에서 반환" 메시지가 나오는지 불분명.
+- **조치 내용**
+  - `OpportunityCostService`의 `calculate()` 메서드에 로그 추가:
+    ```java
+    if (cached.isPresent()) {
+        log.info("캐시된 결과 반환");
+        return cached.get();
+    }
+    ```
+  - 테스트 추가: `testCalculate_CacheWorks()`
+    - 동일한 요청 2회 전송
+    - 결과가 동일한지 확인
+- **결과**
+  - 캐시 정상 동작 확인.
+  - 테스트 통과: 17/17 → 18/18.
+- **배운 점**
+  - 성능 최적화(캐시)는 **로그와 테스트**로 실제 동작을 증명해야 신뢰 확보.
+
+---
+
+## 13) sessionStorage 전환 후 히스토리 동작 확인
+
+- **증상**
+  - localStorage → sessionStorage 변경 후,
+  - 실제로 탭을 닫았을 때 히스토리가 삭제되는지 확인 필요.
+- **조치 내용**
+  - 브라우저 테스트:
+    1. 계산 여러 번 수행 → 히스토리 확인
+    2. 탭 닫기 → 새 탭에서 다시 접속
+    3. 히스토리가 비어있는지 확인
+- **결과**
+  - sessionStorage 정상 동작 확인.
+  - 새 세션마다 깨끗한 시작 가능.
+- **배운 점**
+  - 저장소 정책 변경 시 **실제 브라우저 동작 테스트** 필수.
+  - localStorage vs sessionStorage는 사용자 경험에 큰 영향.
+
+---
+
+## 14) 매우 높은 시급 입력 시 부적절한 에러 메시지
+
+- **증상**
+  - 시급에 10억원 같은 매우 큰 값 입력 시,
+  - "요청 형식이 올바르지 않습니다. JSON 형식을 다시 확인해주세요" 에러 발생.
+  - 사용자 입장에서는 JSON을 직접 작성하지 않았으므로 혼란.
+- **원인**
+  - 백엔드에 `@Max` 검증이 없어, 매우 큰 값이 Long 범위를 초과하거나,
+  - JavaScript Number의 안전 범위를 초과하여 JSON 직렬화 문제 발생 가능.
+  - 프론트엔드에서는 `confirm`으로 경고만 하고 상한선 체크는 없음.
+- **조치 내용**
+  - **백엔드**: `@Max(value = 100_000_000)` 추가 (1억원 상한)
+    - 메시지: "시급은 1억원 이하로 입력해주세요."
+  - **프론트엔드**: 상한선 체크 추가
+    ```javascript
+    if (hourlyWage > 100000000) {
+        showError('시급은 1억원 이하로 입력해주세요.');
+        return false;
+    }
+    ```
+  - **테스트 추가**: `testCalculate_ExceedsMaxWage()` (18번째 테스트)
+- **결과**
+  - 1억원 초과 입력 시 명확한 메시지: "시급은 1억원 이하로 입력해주세요."
+  - 테스트 18/18 통과.
+- **배운 점**
+  - **프론트엔드 검증만으로는 부족**하다. 백엔드 검증이 최종 방어선.
+  - 에러 메시지는 **사용자가 실제로 한 행동**을 기준으로 작성해야 한다.
+    - ❌ "JSON 형식을 다시 확인해주세요" (사용자는 JSON을 모름)
+    - ✅ "시급은 1억원 이하로 입력해주세요" (사용자가 입력한 값에 대한 직접적 피드백)
+
+---
+
+## 15) 브라우저 캐시로 인한 JavaScript 파일 미갱신
+
+- **증상**
+  - `app.js` 파일을 수정했는데, 브라우저에서 이전 버전이 로드됨.
+  - F5 새로고침으로도 업데이트되지 않음.
+- **원인**
+  - 브라우저가 정적 리소스를 캐싱하여, 수정된 파일을 다시 요청하지 않음.
+- **조치 내용**
+  - `index.html`에서 JavaScript 참조에 버전 파라미터 추가:
+    ```html
+    <script th:src="@{/js/app.js(v=2)}"></script>
+    ```
+  - 파일 수정 시마다 버전 증가 (v=2, v=3, ...)
+  - 또는 Ctrl+Shift+R (하드 리프레시) 안내
+- **결과**
+  - 수정된 JavaScript 파일이 즉시 반영됨.
+- **배운 점**
+  - 정적 리소스는 **버전 관리 또는 해시 기반 파일명** 필요.
+  - 개발 중에는 개발자 도구에서 "캐시 사용 안 함" 옵션 활용.
+
+---
+
+## 16) Git 커밋 후 "LF will be replaced by CRLF" 경고
+
+- **증상**
+  - Git 커밋 시 다음 경고 반복 발생:
+    ```
+    warning: in the working copy of 'src/main/resources/static/js/app.js', LF will be replaced by CRLF the next time Git touches it
+    ```
+- **원인**
+  - Windows 환경에서 Git이 자동으로 줄바꿈을 CRLF로 변환.
+  - 파일이 LF로 되어있으면 경고 발생 (동작에는 영향 없음).
+- **조치 내용**
+  - **현재**: 경고 무시 (동작에 영향 없음)
+  - **향후 개선 옵션**:
+    - `.gitattributes` 파일로 줄바꿈 정책 통일
+    - 또는 `git config core.autocrlf false`
+- **결과**
+  - 기능상 문제 없음. 경고는 무시 가능.
+- **배운 점**
+  - Windows/Mac/Linux 협업 시 **줄바꿈 정책 사전 합의** 필요.
+  - 프로젝트 초기에 `.gitattributes` 설정 권장.
+
+---
+
+## 17) 사용자 테스트 전 서버 재시작 필요성
+
+- **증상**
+  - 코드 수정 후 사용자가 브라우저에서 테스트할 때,
+  - 서버가 이미 실행 중이면 변경사항이 반영되지 않음.
+- **원인**
+  - Spring Boot 애플리케이션이 이미 실행 중이면 코드 변경이 반영 안 됨.
+  - (spring-boot-devtools 없음)
+- **조치 내용**
+  - 코드 수정 후:
+    1. Java 프로세스 종료: `Get-Process -Name java | Stop-Process -Force`
+    2. 3초 대기
+    3. 재시작: `mvn spring-boot:run`
+  - 또는 spring-boot-devtools 추가 고려.
+- **결과**
+  - 사용자 테스트 시 최신 코드 반영 확인.
+- **배운 점**
+  - 개발 중에는 **hot reload 도구** (devtools) 도입이 효율적.
+  - 테스트 전 항상 최신 상태 확인 프로세스 필요.
