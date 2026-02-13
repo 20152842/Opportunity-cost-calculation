@@ -313,6 +313,85 @@ const calculateTwoOptions = async () => {
 
 // 결과 표시
 const displayResult = (result) => {
+    // 2안 비교 HTML 구조 복원 (다안 비교에서 돌아온 경우를 위해)
+    const resultSection = document.getElementById('resultSection');
+    if (!document.getElementById('resultA-direct')) {
+        resultSection.innerHTML = `
+            <h2>📊 계산 결과</h2>
+            
+            <div class="recommendation-box">
+                <div class="recommendation" id="recommendation">
+                    추천: <span id="recommendationText">-</span>
+                </div>
+                <div class="difference" id="difference">
+                    차액: <span id="differenceText">-</span>원
+                </div>
+            </div>
+
+            <div class="result-container">
+                <!-- 선택지 A 결과 -->
+                <div class="result-card">
+                    <h3>선택지 A</h3>
+                    <div class="cost-breakdown">
+                        <div class="cost-item">
+                            <span class="cost-label">직접 비용:</span>
+                            <span class="cost-value" id="resultA-direct">-</span>원
+                        </div>
+                        <div class="cost-item">
+                            <span class="cost-label">시간 비용:</span>
+                            <span class="cost-value" id="resultA-time">-</span>원
+                        </div>
+                        <div class="cost-item total">
+                            <span class="cost-label">총 비용:</span>
+                            <span class="cost-value" id="resultA-total">-</span>원
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 선택지 B 결과 -->
+                <div class="result-card">
+                    <h3>선택지 B</h3>
+                    <div class="cost-breakdown">
+                        <div class="cost-item">
+                            <span class="cost-label">직접 비용:</span>
+                            <span class="cost-value" id="resultB-direct">-</span>원
+                        </div>
+                        <div class="cost-item">
+                            <span class="cost-label">시간 비용:</span>
+                            <span class="cost-value" id="resultB-time">-</span>원
+                        </div>
+                        <div class="cost-item total">
+                            <span class="cost-label">총 비용:</span>
+                            <span class="cost-value" id="resultB-total">-</span>원
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 계산식 토글 -->
+            <div class="formula-section">
+                <button class="formula-toggle" id="formulaToggle">
+                    📐 계산식 보기
+                </button>
+                <div class="formula-content hidden" id="formulaContent">
+                    <pre id="formulaText"></pre>
+                </div>
+            </div>
+        `;
+        
+        // 계산식 토글 이벤트 재등록
+        document.getElementById('formulaToggle').addEventListener('click', () => {
+            const formulaContent = document.getElementById('formulaContent');
+            const formulaToggle = document.getElementById('formulaToggle');
+            formulaContent.classList.toggle('hidden');
+            if (formulaContent.classList.contains('hidden')) {
+                formulaToggle.textContent = '📐 계산식 보기';
+            } else {
+                formulaToggle.textContent = '📐 계산식 숨기기';
+            }
+        });
+    }
+    
     // 추천 선택지
     const recommendationText = document.getElementById('recommendationText');
     const recommendation = result.recommendation;
@@ -383,6 +462,11 @@ const switchMode = (mode) => {
     const multiInputSection = document.getElementById('multiInputSection');
     const mode2Btn = document.getElementById('mode2Btn');
     const modeMultiBtn = document.getElementById('modeMultiBtn');
+    const resultSection = document.getElementById('resultSection');
+    
+    // 모드 전환 시 결과 섹션 숨기기
+    resultSection.classList.add('hidden');
+    hideError();
     
     if (mode === '2') {
         twoInputSection.classList.remove('hidden');
@@ -533,6 +617,31 @@ const calculateMulti = async () => {
 
 const displayMultiResult = (result) => {
     const resultSection = document.getElementById('resultSection');
+    
+    // 상세 계산식 생성
+    const hourlyWage = parseInt(hourlyWageInput.value.trim());
+    const perMinute = (hourlyWage / 60).toFixed(0);
+    
+    let detailedFormula = `📊 계산 공식: 총 비용 = 직접 비용 + (시급 ÷ 60) × 소요 시간(분)
+분당 가치 = ${hourlyWage.toLocaleString()}원/시간 ÷ 60 = ${perMinute}원/분\n\n`;
+    
+    // 각 선택지별 상세 계산식 추가
+    result.results.forEach((r, index) => {
+        const timeMinutes = document.querySelector(`.multi-time-input[data-index="${index}"]`)?.value || '?';
+        detailedFormula += `【${r.optionName} 상세 계산】
+・직접 비용: ${r.breakdown.directCost.toLocaleString()}원
+・시간 비용: ${perMinute}원/분 × ${timeMinutes}분 = ${r.breakdown.timeCost.toLocaleString()}원
+・총 비용: ${r.breakdown.directCost.toLocaleString()}원 + ${r.breakdown.timeCost.toLocaleString()}원 = ${r.breakdown.totalCost.toLocaleString()}원
+${r.optionNumber === result.recommendedOption ? '👉 추천 선택지 (최소 비용)\n' : '\n'}`;
+    });
+    
+    if (result.recommendedOption) {
+        const recommended = result.results.find(r => r.optionNumber === result.recommendedOption);
+        detailedFormula += `\n✅ 결론: ${recommended.optionName}이(가) 최대 ${result.maxDifference.toLocaleString()}원 절약 가능`;
+    } else {
+        detailedFormula += `\n✅ 결론: 모든 선택지의 총 비용이 동일합니다`;
+    }
+    
     resultSection.innerHTML = `
         <h2>📊 다안 비교 결과</h2>
         ${result.recommendedOption ? 
@@ -569,7 +678,7 @@ const displayMultiResult = (result) => {
         <div class="formula-section">
             <button class="formula-toggle" id="formulaToggle">📐 계산식 보기</button>
             <div class="formula-content hidden" id="formulaContent">
-                <pre>${result.formula}</pre>
+                <pre>${detailedFormula}</pre>
             </div>
         </div>
     `;
